@@ -60,6 +60,10 @@ import { BrandStudioView } from './views/BrandStudioView';
 
 const STORAGE_KEY = 'mitemshub_billing_studio_v1';
 
+// Set by the GitHub Pages build: there is no Express server there, so the app
+// runs on seed data and browser storage instead of showing a login nobody can pass.
+const STATIC_DEMO = import.meta.env.VITE_STATIC_DEMO === 'true';
+
 function normalizeBrand(brand: BrandSettings): BrandSettings {
   const merged: BrandSettings = { ...DEFAULT_BRAND_SETTINGS, ...brand };
   if (merged.logoVariant !== 'draft' && merged.logoVariant !== 'custom') {
@@ -143,6 +147,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (STATIC_DEMO) {
+      setAuthStatus('signed-in');
+      return;
+    }
+
     let active = true;
     setUnauthorizedHandler(() => setAuthStatus('signed-out'));
 
@@ -606,6 +615,13 @@ export default function App() {
         />
 
         <div className="flex-1 min-w-0 flex flex-col overflow-x-clip">
+          {STATIC_DEMO && (
+            <p className="no-print bg-[#FFF7E6] border-b border-[#F0D8A8] text-[#7A5310] text-[11px] leading-relaxed px-4 sm:px-8 py-2">
+              Static preview: this build has no server, so invoices and clients are kept in this
+              browser only and nothing reaches Appwrite. Run it locally for the real ledger.
+            </p>
+          )}
+
           {/* Top Header Bar — Clean Breadcrumb + Single Primary Action */}
           <header className="no-print sticky top-0 z-30 bg-[#F7F7F5]/95 backdrop-blur-xs border-b border-[#E5E5E0] px-4 sm:px-8 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">

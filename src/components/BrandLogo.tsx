@@ -1,7 +1,6 @@
 import type { LogoVariant } from '../types/billing';
 
-export const DRAFT_LOGO_PATH =
-  '/assets/aistudio/dd3a3da2-677d-44b6-8c03-01745c6efb29-removebg-preview_bc41b6f6.png';
+export const DRAFT_LOGO_PATH = `${import.meta.env.BASE_URL}assets/aistudio/dd3a3da2-677d-44b6-8c03-01745c6efb29-removebg-preview_bc41b6f6.png`;
 
 interface BrandLogoProps {
   variant: LogoVariant;
