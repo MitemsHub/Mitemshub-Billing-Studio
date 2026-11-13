@@ -27,6 +27,18 @@ import type {
   ReminderLog,
   ReminderRule,
 } from './src/types/billing.ts';
+import {
+  clearLoginFailures,
+  clearSessionCookie,
+  createSessionToken,
+  isAuthEnabled,
+  isLoginBlocked,
+  noteLoginFailure,
+  readSession,
+  requireSession,
+  setSessionCookie,
+  verifyCredentials,
+} from './server/auth.ts';
 
 // Load .env.local first (local overrides), then .env. Existing variables win, so
 // credentials can live in either file without being overwritten.
@@ -67,6 +79,50 @@ async function startServer() {
       return res.status(500).json({ ok: false, appwriteConfigured: true, error: message });
     }
   });
+
+  app.get('/api/auth/session', (req, res) => {
+    const session = readSession(req);
+    res.json({
+      authEnabled: isAuthEnabled(),
+      // Mirrors requireSession: without Appwrite there is nothing to log in to.
+      authenticated: !isAuthEnabled() || session !== null,
+      user: session,
+    });
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    if (!isAuthEnabled()) {
+      return res.status(400).json({ error: 'Appwrite is not configured on this server.' });
+    }
+
+    const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
+    if (!email?.trim() || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const attemptKey = req.ip ?? 'unknown';
+    if (isLoginBlocked(attemptKey)) {
+      return res.status(429).json({ error: 'Too many attempts. Try again in 10 minutes.' });
+    }
+
+    try {
+      const user = await verifyCredentials(email.trim(), password);
+      clearLoginFailures(attemptKey);
+      setSessionCookie(res, createSessionToken(user));
+      return res.json({ user });
+    } catch {
+      noteLoginFailure(attemptKey);
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+  });
+
+  app.post('/api/auth/logout', (_req, res) => {
+    clearSessionCookie(res);
+    return res.json({ ok: true });
+  });
+
+  // Everything below this line requires a valid session when Appwrite is configured.
+  app.use('/api', requireSession);
 
   app.get('/api/state', async (_req, res) => {
     if (!isAppwriteConfigured()) {

@@ -120,9 +120,36 @@ npm start
 
 ---
 
+## Authentication
+
+Every data route requires a signed-in session whenever Appwrite is configured. Only `GET /api/health` and the `/api/auth/*` routes stay public.
+
+Sign-in is verified against **Appwrite Auth** (email + password). The server never stores the password: it opens a temporary Appwrite session, reads the account profile, then issues its own `httpOnly`, `SameSite=Lax` cookie signed with HMAC-SHA256. Sessions last 8 hours; sign out from the sidebar. If Appwrite is not configured at all, the guard stays off so the app still runs in local-only mode.
+
+### Appwrite console setup
+
+1. **Auth → Settings** — make sure **Email/Password** is enabled for the project.
+2. **Auth → Users → Create user** — add the email and password of each person who should reach the studio. This app exposes no public sign-up; accounts are created by you.
+3. **No extra API key scopes are needed.** Login uses Appwrite's public session endpoint; the existing server key is only used for TablesDB reads and writes.
+
+### Session environment
+
+```env
+# Optional. Signing key for session cookies. When unset it is derived from
+# APPWRITE_API_KEY, so sessions still survive restarts.
+SESSION_SECRET="a-long-random-string"
+```
+
+Set `SESSION_SECRET` in production so the cookie key is independent of the Appwrite key. The cookie is `Secure` when `NODE_ENV=production`, so the deployed app must be served over HTTPS. Failed logins are rate limited: 8 attempts per IP per 10 minutes.
+
+---
+
 ## API Endpoints
 
 - `GET /api/health` — Verify server and Appwrite database readiness
+- `POST /api/auth/login` — Exchange email + password for a session cookie
+- `POST /api/auth/logout` — Clear the session cookie
+- `GET /api/auth/session` — Report whether the caller is signed in
 - `GET /api/state` — Hydrate brand settings, clients, invoices, recurring schedules, rules, and reminder logs
 - `PUT /api/brand` — Persist studio profile, logo choice, and payout accounts
 - `PUT /api/clients/:id` · `DELETE /api/clients/:id` — Create/update/delete client records

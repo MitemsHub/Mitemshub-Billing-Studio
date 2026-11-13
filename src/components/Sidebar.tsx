@@ -6,6 +6,7 @@ import {
   Users,
   X,
   Download,
+  LogOut,
 } from 'lucide-react';
 import type { BrandSettings } from '../types/billing';
 import { BrandLogo } from './BrandLogo';
@@ -19,6 +20,8 @@ interface SidebarProps {
   overdueCount: number;
   dueRemindersCount: number;
   onExportBackup: () => void;
+  user?: { name: string; email: string } | null;
+  onSignOut?: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -38,6 +41,8 @@ export function Sidebar({
   overdueCount,
   dueRemindersCount,
   onExportBackup,
+  user,
+  onSignOut,
   mobileOpen,
   onCloseMobile,
 }: SidebarProps) {
@@ -129,6 +134,24 @@ export function Sidebar({
           <Download className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>Export Backup JSON</span>
         </button>
+
+        {user && onSignOut && (
+          <div className="flex items-center gap-2 pt-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-[#111315] truncate">{user.name}</p>
+              <p className="text-[11px] text-[#5A6065] truncate">{user.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="p-2 rounded-lg text-[#5A6065] hover:text-[#111315] hover:bg-[#F7F7F5] transition-colors shrink-0"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

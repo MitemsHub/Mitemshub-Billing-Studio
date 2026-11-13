@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Menu, Plus } from 'lucide-react';
 import {
   DEFAULT_BRAND_SETTINGS,
@@ -25,7 +25,11 @@ import {
   deleteInvoiceRemote,
   deleteRecurringRemote,
   deleteReminderLogRemote,
+  fetchAuthSession,
   fetchBackendState,
+  setUnauthorizedHandler,
+  signOut,
+  type SessionUser,
   syncBrand,
   syncClient,
   syncInvoice,
@@ -47,6 +51,7 @@ import {
   renderReminderTemplate,
 } from './utils/billing';
 import { Sidebar, type NavSection } from './components/Sidebar';
+import { LoginScreen } from './components/LoginScreen';
 import { OverviewView } from './views/OverviewView';
 import { InvoicesView } from './views/InvoicesView';
 import { ClientsView } from './views/ClientsView';
@@ -120,22 +125,43 @@ export default function App() {
   const [draftInvoice, setDraftInvoice] = useState<Invoice | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<'checking' | 'signed-in' | 'signed-out'>(
+    'checking'
+  );
+  const [authUser, setAuthUser] = useState<SessionUser | null>(null);
 
   const todayIso = formatIsoDate(new Date());
 
-  useEffect(() => {
-    let active = true;
-    fetchBackendState().then((remote) => {
-      if (!active || !remote) return;
+  const hydrateFromBackend = useCallback(() => {
+    void fetchBackendState().then((remote) => {
+      if (!remote) return;
       setState({
         ...remote,
         brand: normalizeBrand(remote.brand),
       });
     });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setUnauthorizedHandler(() => setAuthStatus('signed-out'));
+
+    fetchAuthSession().then((session) => {
+      if (!active) return;
+      if (!session?.authenticated) {
+        setAuthStatus('signed-out');
+        return;
+      }
+      setAuthUser(session.user);
+      setAuthStatus('signed-in');
+      hydrateFromBackend();
+    });
+
     return () => {
       active = false;
+      setUnauthorizedHandler(null);
     };
-  }, []);
+  }, [hydrateFromBackend]);
 
   useEffect(() => {
     try {
@@ -532,6 +558,32 @@ export default function App() {
 
   const isInsideInvoiceEditor = activeSection === 'invoices' && draftInvoice !== null;
 
+  const handleSignedIn = (user: SessionUser) => {
+    setAuthUser(user);
+    setAuthStatus('signed-in');
+    hydrateFromBackend();
+  };
+
+  const handleSignOut = () => {
+    void signOut().then(() => {
+      setAuthUser(null);
+      setAuthStatus('signed-out');
+      setMobileNavOpen(false);
+    });
+  };
+
+  if (authStatus === 'checking') {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#F7F7F5] text-sm text-[#5A6065]">
+        Loading workspace…
+      </div>
+    );
+  }
+
+  if (authStatus === 'signed-out') {
+    return <LoginScreen onSignedIn={handleSignedIn} />;
+  }
+
   return (
     <div className="min-h-screen flex bg-[#F7F7F5] text-[#111315] overflow-x-clip">
         <Sidebar
@@ -547,6 +599,8 @@ export default function App() {
           overdueCount={overdueCount}
           dueRemindersCount={dueRemindersCount}
           onExportBackup={handleExportBackup}
+          user={authUser}
+          onSignOut={handleSignOut}
           mobileOpen={mobileNavOpen}
           onCloseMobile={() => setMobileNavOpen(false)}
         />
