@@ -10,11 +10,3 @@ coverage/
 .aistudio/
 .freebuff/
 
-# Build & tool output
-*.tsbuildinfo
-vite.config.ts.timestamp-*
-
-# Editor
-.vscode/
-.idea/
-.devlogs/

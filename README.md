@@ -89,7 +89,7 @@ APPWRITE_API_KEY="your-appwrite-server-api-key"
 APPWRITE_DATABASE_ID="mitemshub_billing"
 ```
 
-> Required Appwrite API Key Scopes: `databases.read`, `databases.write`, `collections.read`, `collections.write`, `attributes.read`, `attributes.write`, `documents.read`, `documents.write`.
+> Required Appwrite API key scopes: `databases.write`, `tables.write`, `columns.write`, `rows.read`, `rows.write`. Add `tables.read` / `columns.read` if your project enforces schema reads separately.
 
 ### 3. Run Development Server
 

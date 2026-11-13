@@ -8,6 +8,9 @@ import type {
   ServicePreset,
 } from '../types/billing';
 
+// Starter profile for a fresh clone. Contact and payout details are placeholders on
+// purpose: real values live in Appwrite (or the browser cache) and are edited in
+// Brand Studio. Never commit real bank details, routing numbers or tax IDs here.
 export const DEFAULT_BRAND_SETTINGS: BrandSettings = {
   businessName: 'Mitemshub',
   tagline: 'Data Analysis · AI Systems · Custom Web Engineering',

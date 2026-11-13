@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   clearReminderLogs,
   createReminderLog,
@@ -40,19 +39,13 @@ import {
   verifyCredentials,
 } from './server/auth.ts';
 
-// Load .env.local first (local overrides), then .env. Existing variables win, so
-// credentials can live in either file without being overwritten.
-dotenv.config({ path: '.env.local', quiet: true });
-dotenv.config({ quiet: true });
+// .env.local wins over .env; dotenv only fills keys that are still unset.
+dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Guard against an inherited PORT of "0"/""/NaN, which would bind a random port.
-const parsedPort = Number(process.env.PORT);
-const PORT =
-  Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort < 65536 ? parsedPort : 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+
+// A missing, empty or "0" PORT would otherwise bind a random port.
+const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
   const app = express();
@@ -261,7 +254,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distDir = path.join(__dirname, 'dist');
+    const distDir = path.join(import.meta.dirname, 'dist');
     app.use(express.static(distDir));
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
