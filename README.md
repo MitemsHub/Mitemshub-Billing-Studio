@@ -89,7 +89,7 @@ APPWRITE_API_KEY="your-appwrite-server-api-key"
 APPWRITE_DATABASE_ID="mitemshub_billing"
 ```
 
-> Required Appwrite API key scopes: `databases.write`, `tables.write`, `columns.write`, `rows.read`, `rows.write`. Add `tables.read` / `columns.read` if your project enforces schema reads separately.
+> Required Appwrite API key scopes: `databases.write`, `tables.write`, `columns.write`, `rows.read`, `rows.write`, `users.read`, `sessions.write`. Add `tables.read` / `columns.read` if your project enforces schema reads separately.
 
 ### 3. Run Development Server
 
@@ -120,17 +120,22 @@ npm start
 
 ---
 
+## Hosting
+
+- **GitHub Pages serves a static preview only.** The workflow in `.github/workflows/pages.yml` builds with `VITE_BASE=/Mitemshub-Billing-Studio/` and `VITE_STATIC_DEMO=true`, which skips the sign-in gate because Pages cannot run the Express server. Data stays in the browser and a banner on the page says so. The repository's **Pages source must be set to "GitHub Actions"** for this workflow to publish.
+- **The real app needs a Node host** (Render, Railway, Fly.io, or a VPS). Run `npm run build`, then `npm start` with the `APPWRITE_*` variables set. Without a server there is no Appwrite access and no login.
+
 ## Authentication
 
 Every data route requires a signed-in session whenever Appwrite is configured. Only `GET /api/health` and the `/api/auth/*` routes stay public.
 
-Sign-in is verified against **Appwrite Auth** (email + password). The server never stores the password: it opens a temporary Appwrite session, reads the account profile, then issues its own `httpOnly`, `SameSite=Lax` cookie signed with HMAC-SHA256. Sessions last 8 hours; sign out from the sidebar. If Appwrite is not configured at all, the guard stays off so the app still runs in local-only mode.
+Sign-in is verified against **Appwrite Auth** (email + password). The server never stores the password: it opens a temporary Appwrite session, reads the account profile, revokes that session immediately so sign-ins leave nothing behind, then issues its own `httpOnly`, `SameSite=Lax` cookie signed with HMAC-SHA256. Sessions last 8 hours; sign out from the sidebar. If Appwrite is not configured at all, the guard stays off so the app still runs in local-only mode.
 
 ### Appwrite console setup
 
 1. **Auth → Settings** — make sure **Email/Password** is enabled for the project.
 2. **Auth → Users → Create user** — add the email and password of each person who should reach the studio. This app exposes no public sign-up; accounts are created by you.
-3. **No extra API key scopes are needed.** Login uses Appwrite's public session endpoint; the existing server key is only used for TablesDB reads and writes.
+3. **The API key also needs `users.read` and `sessions.write`.** The password check itself uses Appwrite's public session endpoint, but the server key is what reads the profile and revokes the temporary session afterwards.
 
 ### Session environment
 

@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { Account, Client } from 'node-appwrite';
+import { Account, Client, Users } from 'node-appwrite';
 
 const COOKIE_NAME = 'mitems_session';
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
@@ -100,24 +100,37 @@ export function clearSessionCookie(res: Response): void {
   res.clearCookie(COOKIE_NAME, { path: '/' });
 }
 
-/** Verifies an email/password pair against Appwrite. Throws on bad credentials. */
+/**
+ * Verifies an email/password pair against Appwrite. Throws on bad credentials.
+ *
+ * Appwrite creates a real session for this check, so the session is revoked
+ * before returning — otherwise every sign-in would leave an orphan behind until
+ * it expired. The profile read and the revocation both use the server key, since
+ * the SDK no longer returns the session secret needed to act as that user.
+ */
 export async function verifyCredentials(
   email: string,
   password: string
 ): Promise<SessionUser> {
-  const { endpoint, projectId } = config();
+  const { endpoint, projectId, apiKey } = config();
+
   const session = await new Account(
     new Client().setEndpoint(endpoint).setProject(projectId)
   ).createEmailPasswordSession({ email, password });
 
-  const user = await new Account(
-    new Client()
-      .setEndpoint(endpoint)
-      .setProject(projectId)
-      .setSession(session.secret)
-  ).get();
+  const users = new Users(
+    new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
+  );
 
-  return { email: user.email || email, name: user.name || user.email || email };
+  try {
+    const user = await users.get({ userId: session.userId });
+    return { email: user.email || email, name: user.name || user.email || email };
+  } finally {
+    // Best-effort: a failed revocation must not fail a login Appwrite accepted.
+    await users
+      .deleteSession({ userId: session.userId, sessionId: session.$id })
+      .catch(() => undefined);
+  }
 }
 
 const failures = new Map<string, { count: number; firstAt: number }>();
