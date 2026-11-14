@@ -18,13 +18,21 @@ export interface AuthSession {
   authEnabled: boolean;
   authenticated: boolean;
   user: SessionUser | null;
+  /** False when the backend could not be reached at all, as opposed to a signed-out session. */
+  reachable?: boolean;
 }
 
 let onUnauthorized: (() => void) | null = null;
+let onConnectionProblem: (() => void) | null = null;
 
 /** Lets the app drop back to the sign-in screen when a session expires. */
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
+}
+
+/** Lets the app say "cannot reach the server" instead of pretending a request succeeded. */
+export function setConnectionProblemHandler(handler: (() => void) | null): void {
+  onConnectionProblem = handler;
 }
 
 async function apiRequest<T>(url: string, options?: RequestInit): Promise<T | null> {
@@ -43,6 +51,8 @@ async function apiRequest<T>(url: string, options?: RequestInit): Promise<T | nu
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
+    // fetch only throws when the request never completed (offline, server down).
+    onConnectionProblem?.();
     return null;
   }
 }

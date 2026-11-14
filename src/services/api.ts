@@ -7,6 +7,7 @@ export type { AuthSession, SessionUser } from './serverApi';
 
 export const {
   setUnauthorizedHandler,
+  setConnectionProblemHandler,
   fetchAuthSession,
   signIn,
   signOut,

@@ -39,10 +39,16 @@ import type { AuthSession, SessionUser } from './serverApi';
 // so the table permissions, not this code, decide who can read the ledger.
 
 let onUnauthorized: (() => void) | null = null;
+let onConnectionProblem: (() => void) | null = null;
 
 /** Lets the app drop back to the sign-in screen when a session expires. */
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
+}
+
+/** Lets the app say "cannot reach Appwrite" instead of pretending a request succeeded. */
+export function setConnectionProblemHandler(handler: (() => void) | null): void {
+  onConnectionProblem = handler;
 }
 
 interface AppwriteErrorShape {
@@ -58,6 +64,17 @@ const errorMessage = (error: unknown): string =>
   (error instanceof Error ? error.message : 'Unexpected error.');
 
 const isNotFound = (error: unknown): boolean => errorCode(error) === 404;
+
+/**
+ * Appwrite throws an exception carrying an HTTP status for real API answers. A
+ * request that never reached the service has no status at all — that is a
+ * connection problem, and must not be reported as a bad password.
+ */
+const isConnectionError = (error: unknown): boolean => {
+  if (typeof errorCode(error) === 'number') return false;
+  const message = errorMessage(error);
+  return /fetch|network|load failed|connection|offline|timed? ?out/i.test(message);
+};
 
 async function listRows(tableId: string): Promise<Array<Record<string, unknown>>> {
   const result = await tables.listRows({
@@ -102,7 +119,7 @@ async function removeRow(tableId: string, rowId: string): Promise<null> {
 
 export async function fetchAuthSession(): Promise<AuthSession | null> {
   if (!isAppwriteConfigured) {
-    return { authEnabled: true, authenticated: false, user: null };
+    return { authEnabled: true, authenticated: false, user: null, reachable: false };
   }
   try {
     const user = await account.get();
@@ -111,7 +128,13 @@ export async function fetchAuthSession(): Promise<AuthSession | null> {
       authenticated: true,
       user: { email: user.email, name: user.name || user.email },
     };
-  } catch {
+  } catch (error) {
+    // 401 means "no session" and belongs on the sign-in screen; anything that never
+    // reached Appwrite must not be shown as a signed-out studio.
+    if (isConnectionError(error)) {
+      onConnectionProblem?.();
+      return { authEnabled: true, authenticated: false, user: null, reachable: false };
+    }
     return { authEnabled: true, authenticated: false, user: null };
   }
 }
@@ -140,6 +163,14 @@ export async function signIn(
       };
     }
     if (code === 400) return { ok: false, error: 'Enter a valid email and password.' };
+    if (isConnectionError(error)) {
+      onConnectionProblem?.();
+      return {
+        ok: false,
+        error:
+          'Cannot reach Appwrite. Check your internet connection and try again — this is not a password problem.',
+      };
+    }
     return { ok: false, error: errorMessage(error) };
   }
 }
@@ -177,6 +208,7 @@ export async function fetchBackendState(): Promise<PersistedState | null> {
     };
   } catch (error) {
     if (errorCode(error) === 401) onUnauthorized?.();
+    if (isConnectionError(error)) onConnectionProblem?.();
     return null;
   }
 }

@@ -27,6 +27,7 @@ import {
   deleteReminderLogRemote,
   fetchAuthSession,
   fetchBackendState,
+  setConnectionProblemHandler,
   setUnauthorizedHandler,
   signOut,
   type SessionUser,
@@ -116,16 +117,18 @@ export default function App() {
   const [draftInvoice, setDraftInvoice] = useState<Invoice | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [authStatus, setAuthStatus] = useState<'checking' | 'signed-in' | 'signed-out'>(
-    'checking'
-  );
+  const [authStatus, setAuthStatus] = useState<
+    'checking' | 'signed-in' | 'signed-out' | 'unreachable'
+  >('checking');
   const [authUser, setAuthUser] = useState<SessionUser | null>(null);
+  const [connectionProblem, setConnectionProblem] = useState(false);
 
   const todayIso = formatIsoDate(new Date());
 
   const hydrateFromBackend = useCallback(() => {
     void fetchBackendState().then((remote) => {
       if (!remote) return;
+      setConnectionProblem(false);
       setState({
         ...remote,
         brand: normalizeBrand(remote.brand),
@@ -133,13 +136,20 @@ export default function App() {
     });
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    setUnauthorizedHandler(() => setAuthStatus('signed-out'));
-
-    fetchAuthSession().then((session) => {
-      if (!active) return;
-      if (!session?.authenticated) {
+  const checkSession = useCallback(() => {
+    setAuthStatus('checking');
+    void fetchAuthSession().then((session) => {
+      if (!session) {
+        setAuthStatus('signed-out');
+        return;
+      }
+      // reachable === false means the request never got an answer, so a sign-in form
+      // (or a "wrong password") would misdescribe what happened.
+      if (session.reachable === false) {
+        setAuthStatus('unreachable');
+        return;
+      }
+      if (!session.authenticated) {
         setAuthStatus('signed-out');
         return;
       }
@@ -147,12 +157,17 @@ export default function App() {
       setAuthStatus('signed-in');
       hydrateFromBackend();
     });
-
-    return () => {
-      active = false;
-      setUnauthorizedHandler(null);
-    };
   }, [hydrateFromBackend]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => setAuthStatus('signed-out'));
+    setConnectionProblemHandler(() => setConnectionProblem(true));
+    checkSession();
+    return () => {
+      setUnauthorizedHandler(null);
+      setConnectionProblemHandler(null);
+    };
+  }, [checkSession]);
 
   useEffect(() => {
     try {
@@ -571,6 +586,36 @@ export default function App() {
     );
   }
 
+  if (authStatus === 'unreachable') {
+    return (
+      <div className="min-h-screen bg-[#F7F7F5] text-[#111315] grid place-items-center px-4 py-10">
+        <div className="w-full max-w-[460px] bg-white border border-[#E5E5E0] rounded-2xl p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_12px_28px_-18px_rgba(17,19,21,0.28)]">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B45309]">
+            Connection problem
+          </p>
+          <h1 className="font-display text-xl font-bold tracking-tight mt-2">
+            Cannot reach Appwrite
+          </h1>
+          <p className="text-sm text-[#5A6065] mt-2 leading-relaxed">
+            The studio could not connect to Appwrite, so it cannot load your ledger. Nothing was
+            changed and no data is lost — this is a connection problem, not a sign-in problem.
+          </p>
+          <p className="text-xs text-[#5A6065] mt-3 leading-relaxed">
+            Check your internet connection and try again. If it keeps failing, confirm the Appwrite
+            endpoint is reachable from this network.
+          </p>
+          <button
+            type="button"
+            onClick={checkSession}
+            className="mt-6 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#0B3B91] text-white text-sm font-semibold transition-opacity hover:opacity-90"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (authStatus === 'signed-out') {
     return <LoginScreen onSignedIn={handleSignedIn} />;
   }
@@ -597,6 +642,28 @@ export default function App() {
         />
 
         <div className="flex-1 min-w-0 flex flex-col overflow-x-clip">
+          {connectionProblem && (
+            <p
+              role="status"
+              className="no-print bg-[#FFF7E6] border-b border-[#F0D8A8] text-[#7A5310] text-[11px] leading-relaxed px-4 sm:px-8 py-2 flex flex-wrap items-center justify-between gap-2"
+            >
+              <span>
+                Cannot reach Appwrite right now — showing the copy saved in this browser. Recent
+                changes may not have synced.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setConnectionProblem(false);
+                  hydrateFromBackend();
+                }}
+                className="font-semibold underline shrink-0"
+              >
+                Retry
+              </button>
+            </p>
+          )}
+
           {/* Top Header Bar — Clean Breadcrumb + Single Primary Action */}
           <header className="no-print sticky top-0 z-30 bg-[#F7F7F5]/95 backdrop-blur-xs border-b border-[#E5E5E0] px-4 sm:px-8 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">

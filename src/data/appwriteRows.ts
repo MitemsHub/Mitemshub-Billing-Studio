@@ -8,7 +8,7 @@ import type {
   ReminderLog,
   ReminderRule,
 } from '../types/billing';
-import { DEFAULT_BRAND_SETTINGS } from './seedData';
+import { DEFAULT_BRAND_SETTINGS } from './seedData.ts';
 
 // Row <-> model mapping for the browser backend (src/services/browserApi.ts).
 // server/appwrite.ts carries its own copy of these serializers for the Express
