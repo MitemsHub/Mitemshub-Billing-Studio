@@ -19,6 +19,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@backend": [
+        "./src/services/serverApi.ts"
       ]
     },
     "allowImportingTsExtensions": true,

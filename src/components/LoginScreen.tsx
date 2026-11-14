@@ -119,8 +119,7 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
             <p className="flex items-start gap-2 text-[11px] text-[#5A6065] mt-5 leading-relaxed">
               <LockKeyhole className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
-                Use the Mitemshub account created in your Appwrite project. Sessions last eight
-                hours.
+                Sign in with the Mitemshub account created in your Appwrite project.
               </span>
             </p>
           </div>

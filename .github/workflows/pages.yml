@@ -1,4 +1,4 @@
-name: Deploy static preview to GitHub Pages
+name: Deploy studio to GitHub Pages
 
 on:
   push:
@@ -24,10 +24,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # GitHub Pages cannot run the Express server, so this build uses the browser
+      # Appwrite client. The endpoint and project id are public client values.
       - run: npm run build
         env:
           VITE_BASE: /Mitemshub-Billing-Studio/
-          VITE_STATIC_DEMO: 'true'
+          VITE_BROWSER_DATA: 'true'
+          VITE_APPWRITE_ENDPOINT: https://fra.cloud.appwrite.io/v1
+          VITE_APPWRITE_PROJECT_ID: 6af79320002e0baafe60
+          VITE_APPWRITE_DATABASE_ID: mitemshub_billing
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
