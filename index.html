@@ -2,6 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      /* GitHub Pages publishes this file verbatim while the repo's Pages source is
+         still "Deploy from a branch". Served that way, the module entry below is
+         returned as a download the browser refuses to run, which is the blank page.
+         Until the source is switched to the GitHub Actions workflow, send visitors
+         to the prebuilt copy in ./site/ instead. */
+      if (
+        location.hostname.endsWith('github.io') &&
+        document.querySelector('script[type="module"][src="/src/main.tsx"]')
+      ) {
+        location.replace('./site/');
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mitemshub Billing Studio — Dual-Currency Invoicing & Client Ledger</title>
     <meta
