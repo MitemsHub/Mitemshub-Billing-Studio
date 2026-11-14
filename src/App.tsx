@@ -102,6 +102,45 @@ function loadInitialState(): PersistedState {
   };
 }
 
+function AuthProblem({
+  kind,
+  onRetry,
+}: {
+  kind: 'unreachable' | 'unconfigured';
+  onRetry: () => void;
+}) {
+  const unconfigured = kind === 'unconfigured';
+  return (
+    <div className="min-h-screen bg-[#F7F7F5] text-[#111315] grid place-items-center px-4 py-10">
+      <div className="w-full max-w-[460px] bg-white border border-[#E5E5E0] rounded-2xl p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_12px_28px_-18px_rgba(17,19,21,0.28)]">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B45309]">
+          {unconfigured ? 'Configuration problem' : 'Connection problem'}
+        </p>
+        <h1 className="font-display text-xl font-bold tracking-tight mt-2">
+          {unconfigured ? 'Appwrite is not configured' : 'Cannot reach Appwrite'}
+        </h1>
+        <p className="text-sm text-[#5A6065] mt-2 leading-relaxed">
+          {unconfigured
+            ? 'This build was created without an Appwrite endpoint and project id, so it cannot load or save your ledger. Your account and password are fine.'
+            : 'The studio could not connect to Appwrite, so it cannot load your ledger. Nothing was changed and no data is lost — this is a connection problem, not a sign-in problem.'}
+        </p>
+        <p className="text-xs text-[#5A6065] mt-3 leading-relaxed">
+          {unconfigured
+            ? 'Set VITE_APPWRITE_ENDPOINT and VITE_APPWRITE_PROJECT_ID and rebuild with VITE_BROWSER_DATA=true.'
+            : 'Check your internet connection and try again. If it keeps failing, confirm the Appwrite endpoint is reachable from this network.'}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-6 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#0B3B91] text-white text-sm font-semibold transition-opacity hover:opacity-90"
+        >
+          {unconfigured ? 'Check again' : 'Try again'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const SECTION_LABELS: Record<NavSection, string> = {
   overview: 'Overview',
   invoices: 'Invoices',
@@ -118,7 +157,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<
-    'checking' | 'signed-in' | 'signed-out' | 'unreachable'
+    'checking' | 'signed-in' | 'signed-out' | 'unreachable' | 'unconfigured'
   >('checking');
   const [authUser, setAuthUser] = useState<SessionUser | null>(null);
   const [connectionProblem, setConnectionProblem] = useState(false);
@@ -141,6 +180,11 @@ export default function App() {
     void fetchAuthSession().then((session) => {
       if (!session) {
         setAuthStatus('signed-out');
+        return;
+      }
+      // A missing endpoint/project is a build problem, not an outage or a sign-in.
+      if (session.configured === false) {
+        setAuthStatus('unconfigured');
         return;
       }
       // reachable === false means the request never got an answer, so a sign-in form
@@ -586,34 +630,12 @@ export default function App() {
     );
   }
 
+  if (authStatus === 'unconfigured') {
+    return <AuthProblem kind="unconfigured" onRetry={checkSession} />;
+  }
+
   if (authStatus === 'unreachable') {
-    return (
-      <div className="min-h-screen bg-[#F7F7F5] text-[#111315] grid place-items-center px-4 py-10">
-        <div className="w-full max-w-[460px] bg-white border border-[#E5E5E0] rounded-2xl p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_12px_28px_-18px_rgba(17,19,21,0.28)]">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B45309]">
-            Connection problem
-          </p>
-          <h1 className="font-display text-xl font-bold tracking-tight mt-2">
-            Cannot reach Appwrite
-          </h1>
-          <p className="text-sm text-[#5A6065] mt-2 leading-relaxed">
-            The studio could not connect to Appwrite, so it cannot load your ledger. Nothing was
-            changed and no data is lost — this is a connection problem, not a sign-in problem.
-          </p>
-          <p className="text-xs text-[#5A6065] mt-3 leading-relaxed">
-            Check your internet connection and try again. If it keeps failing, confirm the Appwrite
-            endpoint is reachable from this network.
-          </p>
-          <button
-            type="button"
-            onClick={checkSession}
-            className="mt-6 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#0B3B91] text-white text-sm font-semibold transition-opacity hover:opacity-90"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    );
+    return <AuthProblem kind="unreachable" onRetry={checkSession} />;
   }
 
   if (authStatus === 'signed-out') {

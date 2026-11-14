@@ -71,7 +71,10 @@ const isNotFound = (error: unknown): boolean => errorCode(error) === 404;
  * connection problem, and must not be reported as a bad password.
  */
 const isConnectionError = (error: unknown): boolean => {
-  if (typeof errorCode(error) === 'number') return false;
+  // Only a plausible HTTP status proves Appwrite answered. Anything else (no code,
+  // code 0) means the request died in transit.
+  const code = errorCode(error);
+  if (typeof code === 'number' && code >= 100) return false;
   const message = errorMessage(error);
   return /fetch|network|load failed|connection|offline|timed? ?out/i.test(message);
 };
@@ -119,7 +122,13 @@ async function removeRow(tableId: string, rowId: string): Promise<null> {
 
 export async function fetchAuthSession(): Promise<AuthSession | null> {
   if (!isAppwriteConfigured) {
-    return { authEnabled: true, authenticated: false, user: null, reachable: false };
+    return {
+      authEnabled: true,
+      authenticated: false,
+      user: null,
+      reachable: false,
+      configured: false,
+    };
   }
   try {
     const user = await account.get();

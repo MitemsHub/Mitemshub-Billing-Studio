@@ -20,6 +20,8 @@ export interface AuthSession {
   user: SessionUser | null;
   /** False when the backend could not be reached at all, as opposed to a signed-out session. */
   reachable?: boolean;
+  /** False when the build shipped without an Appwrite endpoint/project id. */
+  configured?: boolean;
 }
 
 let onUnauthorized: (() => void) | null = null;
@@ -58,7 +60,23 @@ async function apiRequest<T>(url: string, options?: RequestInit): Promise<T | nu
 }
 
 export async function fetchAuthSession(): Promise<AuthSession | null> {
-  return apiRequest<AuthSession>('/api/auth/session');
+  // Written out rather than reusing apiRequest: a null there means both "session
+  // expired" and "server never answered", and only the second one may claim the
+  // server is unreachable.
+  try {
+    const res = await fetch('/api/auth/session', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (res.status === 401) {
+      onUnauthorized?.();
+      return { authEnabled: true, authenticated: false, user: null };
+    }
+    if (!res.ok) return { authEnabled: true, authenticated: false, user: null };
+    return (await res.json()) as AuthSession;
+  } catch {
+    onConnectionProblem?.();
+    return { authEnabled: true, authenticated: false, user: null, reachable: false };
+  }
 }
 
 export async function signIn(
