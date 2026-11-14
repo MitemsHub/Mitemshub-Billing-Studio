@@ -58,7 +58,10 @@ import { ClientsView } from './views/ClientsView';
 import { RecurringRemindersView } from './views/RecurringRemindersView';
 import { BrandStudioView } from './views/BrandStudioView';
 
-const STORAGE_KEY = 'mitemshub_billing_studio_v1';
+// Bumped from v1: those caches held the old demo rows, which no longer ship, so the
+// stale key is dropped on load instead of being shown as if it were real data.
+const STORAGE_KEY = 'mitemshub_billing_studio_v2';
+const LEGACY_STORAGE_KEY = 'mitemshub_billing_studio_v1';
 
 // Set by the GitHub Pages build: there is no Express server there, so the app
 // runs on seed data and browser storage instead of showing a login nobody can pass.
@@ -74,27 +77,15 @@ function normalizeBrand(brand: BrandSettings): BrandSettings {
 
 function loadInitialState(): PersistedState {
   try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PersistedState>;
       if (parsed.brand && Array.isArray(parsed.clients) && Array.isArray(parsed.invoices)) {
-        const mergedBrand = normalizeBrand(parsed.brand);
-        if (
-          parsed.brand.defaultNotes ===
-          'Thank you for partnering with Mitemshub. Payments may be settled in USD via international wire or in the Naira (NGN) equivalent at the invoice exchange rate listed above.'
-        ) {
-          mergedBrand.defaultNotes = '';
-        }
-        const migratedInvoices = parsed.invoices.map((inv) =>
-          inv.id === 'inv-101' &&
-          inv.notes === 'Settle in USD via Mercury ACH/Wire or NGN equivalent at 1 USD = ₦1,620.00.'
-            ? { ...inv, notes: '' }
-            : inv
-        );
         return {
-          brand: mergedBrand,
+          brand: normalizeBrand(parsed.brand),
           clients: parsed.clients,
-          invoices: migratedInvoices,
+          invoices: parsed.invoices,
           recurringSchedules: parsed.recurringSchedules ?? INITIAL_RECURRING_SCHEDULES,
           reminderRules: parsed.reminderRules ?? INITIAL_REMINDER_RULES,
           reminderLogs: parsed.reminderLogs ?? INITIAL_REMINDER_LOGS,

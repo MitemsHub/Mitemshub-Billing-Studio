@@ -563,7 +563,7 @@ export function ClientsView({
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Tunde Adeyemi"
+                    placeholder="Client name"
                     className="w-full px-3 py-2 border border-[#E5E5E0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0F5C4D]/30"
                   />
                 </div>
@@ -576,7 +576,7 @@ export function ClientsView({
                     type="text"
                     value={form.company}
                     onChange={(e) => setForm({ ...form, company: e.target.value })}
-                    placeholder="e.g. Kora Logistics"
+                    placeholder="Company name"
                     className="w-full px-3 py-2 border border-[#E5E5E0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0F5C4D]/30"
                   />
                 </div>

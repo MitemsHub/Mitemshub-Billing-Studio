@@ -13,7 +13,7 @@
 ## Highlights
 
 - **Multi-Currency Invoicing & FX Equivalents**: Issue invoices in `USD`, `NGN`, `GBP`, `EUR`, `CAD`, `AUD`, `GHS`, `KES`, or `ZAR` with real-time `USD` / `NGN` equivalent quoting, per-invoice FX rate overrides, percentage discounts, VAT/Tax, **WHT (Withholding Tax)** deductions, and crisp **A4 Print / Download PDF** export (`@media print`).
-- **Appwrite Cloud Persistence + Offline Cache**: Backed by an Express API server (`server.ts`) wired to **Appwrite Cloud Databases** (`node-appwrite`) with idempotent schema provisioning, automatic first-run seeding, and automatic browser `localStorage` fallback cache.
+- **Appwrite Cloud Persistence + Offline Cache**: Backed by an Express API server (`server.ts`) wired to **Appwrite Cloud Databases** (`node-appwrite`) with idempotent schema provisioning, a first-run bootstrap of brand settings and reminder templates only (the ledger itself starts empty), and automatic browser `localStorage` fallback cache.
 - **Client Directory**: Manage international client contacts, country profiles, preferred currencies, net payment terms, service tags, CSV invoice exports, and one-click invoice creation.
 - **Recurring Retainers & Reminder Engine**: Schedule weekly, bi-weekly, monthly, or quarterly retainers, generate invoices with one click, customize tokenized reminder templates (`{{client_name}}`, `{{amount_primary}}`, `{{amount_equivalent}}`, `{{due_date}}`), run automated sweeps, and delete individual or clear all **Reminder Dispatch Logs**.
 - **Brand Identity & Stationery Studio**: Features your **Original Draft (PNG)** mark alongside custom image uploads (with remove/replace support), brand accent presets, editable studio address/profile, and dual-currency USD/NGN settlement instructions updated live on the invoice paper.
@@ -43,7 +43,7 @@ mitemshub-billing-studio/
 │   ├── utils/
 │   │   ├── billing.ts         # Currency conversion, WHT/VAT math, CSV export & eligibility engine
 │   │   └── billing.test.ts    # Node built-in test runner unit suite
-│   ├── data/seedData.ts       # Default brand, starter clients, invoices, retainers & rules
+│   ├── data/seedData.ts       # Default brand, service presets & reminder templates (ledger empty)
 │   └── types/billing.ts       # Shared full-stack TypeScript models
 └── .env.example               # Environment template (copy to .env)
 ```
