@@ -124,6 +124,7 @@ npm start
 
 - **GitHub Pages serves a static preview only.** The workflow in `.github/workflows/pages.yml` builds with `VITE_BASE=/Mitemshub-Billing-Studio/` and `VITE_STATIC_DEMO=true`, which skips the sign-in gate because Pages cannot run the Express server. Data stays in the browser and a banner on the page says so. The repository's **Pages source must be set to "GitHub Actions"** for this workflow to publish.
 - **The real app needs a Node host** (Render, Railway, Fly.io, or a VPS). Run `npm run build`, then `npm start` with the `APPWRITE_*` variables set. Without a server there is no Appwrite access and no login.
+- **Installable, works offline.** `public/manifest.json` plus `public/sw.js` (registered only in production builds) cache the app shell, icons and hashed assets, so an installed copy opens with no network. `/api/*` is never cached: ledger data and sessions always come from the server, which means the Node-hosted app can only show its sign-in screen while offline.
 
 ## Authentication
 
